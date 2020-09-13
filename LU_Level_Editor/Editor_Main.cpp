@@ -489,7 +489,7 @@ public:
 		if (inFile.is_open())
 		{
 			std::string s; // Already have name, don't do anything with this
-			std::getline(myfile, s);
+			std::getline(inFile, s);
 
 			inFile >> nWidth >> nHeight;
 			if (nWidth == 0 || nHeight == 0) // Default for these values is 0, so if not changed there is no level

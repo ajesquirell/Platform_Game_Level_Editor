@@ -43,7 +43,7 @@ void Assets::LoadTileSprites(olc::PixelGameEngine* pge, std::vector<std::string>
 	CreateNotFoundSprite(pge);
 
 	// Other static sprite load for the error screen (NOT A TILE)
-	load("Error", "../Sprites/Error.png");
+	load("Error", "../Error.png");
 
 	//Ex
 	//load("Floor", "../Sprites/Floor.png");

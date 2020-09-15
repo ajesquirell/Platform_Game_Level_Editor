@@ -31,12 +31,20 @@ void Assets::LoadTileSprites(olc::PixelGameEngine* pge, std::vector<std::string>
 
 	for (int i = 0; i < vecTileNames.size(); i++)
 	{
-		load(vecTileNames[i], "../Sprites/" + vecTileNames[i] + "/" + vecTileNames[i] + ".png"); // Creates a sprite in assets with the same name as the main png. 
-																							// E.x. If you put "Brick" and "Floor" in Tiles.key, this creates 
-																							// a Sprite called "Brick" and "Floor" from "Brick.png" and "Floor.png" in their respective folders
-																							// We can expand this later to have multiple png's as the main state, loading the animation, and including different states like breaking
+		if (vecTileNames[i] != "Blank")
+		{
+			load(vecTileNames[i], "../Sprites/" + vecTileNames[i] + "/" + vecTileNames[i] + ".png"); // Creates a sprite in assets with the same name as the main png. 
+																								// E.x. If you put "Brick" and "Floor" in Tiles.key, this creates 
+																								// a Sprite called "Brick" and "Floor" from "Brick.png" and "Floor.png" in their respective folders
+																								// We can expand this later to have multiple png's as the main state, loading the animation, and including different states like breaking
 
-		mapDecals[vecTileNames[i]] = std::make_unique<olc::Decal>(mapSprites[vecTileNames[i]]); // Added this here to also have all our sprites as decals
+			mapDecals[vecTileNames[i]] = std::make_unique<olc::Decal>(mapSprites[vecTileNames[i]]); // Added this here to also have all our sprites as decals
+		}
+		else
+		{
+			mapSprites["Blank"] = new olc::Sprite(0, 0);
+			mapDecals["Blank"] = std::make_unique<olc::Decal>(mapSprites["Blank"]);
+		}
 	}
 
 	// Create Not Found Sprite in case something goes wrong with reading the file and Tiles.key
@@ -47,6 +55,8 @@ void Assets::LoadTileSprites(olc::PixelGameEngine* pge, std::vector<std::string>
 
 	//Ex
 	//load("Floor", "../Sprites/Floor.png");
+	mapSprites["Blank"] = new olc::Sprite(0, 0);
+	mapDecals["Blank"] = std::make_unique<olc::Decal>(mapSprites["Blank"]);
 
 }
 

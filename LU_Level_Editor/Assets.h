@@ -37,7 +37,7 @@ public:
 	{
 		if (mapDecals[name] == nullptr)
 			std::cerr << "\nError: Could not retrieve decal with the name \"" << name << "\". Please ensure it exists on disk and is loaded from Assets class.\n";
-		
+
 		return mapDecals[name].get();
 
 	}

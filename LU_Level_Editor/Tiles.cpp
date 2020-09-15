@@ -25,10 +25,18 @@ cTile::cTile(string tileName, bool solid, bool bBreak)
 
 void cTile::PopulateSprites()
 {
-	//animTile.mapStates["default"].push_back(Assets::get().GetSprite(sName));
-	sprite = Assets::get().GetSprite(sName);
+	//if (sName != "Blank")
+	//{
+		//animTile.mapStates["default"].push_back(Assets::get().GetSprite(sName));
+		sprite = Assets::get().GetSprite(sName);
 
-	decal = Assets::get().GetDecal(sName); // Get decal too
+		decal = Assets::get().GetDecal(sName); // Get decal too
+	//}
+	//else
+	//{
+		//sprite = nullptr;
+		//decal = nullptr;
+	//}
 }
 
 void cTile::DrawSelf(olc::PixelGameEngine* pge, float screenPosX, float screenPosY) //screen space coordinates

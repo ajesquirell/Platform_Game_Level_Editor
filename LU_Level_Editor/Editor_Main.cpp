@@ -26,7 +26,8 @@ public:
 		MODE_START,
 		MODE_NEW,
 		MODE_EDIT,
-		MODE_ERROR
+		MODE_ERROR,
+		MODE_TEST
 	};
 
 	int nMode = MODE_START;
@@ -90,6 +91,16 @@ public:
 public:
 	bool OnUserCreate() override
 	{
+		// Some Layer managing
+		CreateLayer();
+		CreateLayer();
+		EnableLayer(1, true);
+		EnableLayer(2, true);
+
+		ClearAllLayers(olc::BLANK);
+
+		SetDrawTarget(nullptr);
+
 		//Already checked before this class is created that level exits.
 		//Obviously you could mess this up, but this level of error 
 		//checking is good enough for the purposes of this application
@@ -135,6 +146,7 @@ public:
 
 		decSkull = std::make_unique<olc::Decal>(Assets::get().GetSprite("Error"));
 		
+		//TEST
 
 		return true;
 	}
@@ -152,7 +164,19 @@ public:
 			return UpdateEditScreen(fElapsedTime);
 		case MODE_ERROR:
 			return UpdateErrorScreen(fElapsedTime);
+		case MODE_TEST:
+			return UpdateTestScreen(fElapsedTime);
 		}
+
+		return true;
+	}
+
+	bool OnUserDestroy() override
+	{
+		for (int i = 0; i < nWidth * nHeight; i++)
+			delete vecTiles[i];
+
+		delete[] vecTiles;
 
 		return true;
 	}
@@ -176,7 +200,11 @@ public:
 			if (GetKey(olc::ENTER).bReleased)
 			{
 				if (LoadLevelData(nSelection))
+				{
+					ClearAllLayers(olc::BLANK);
 					nMode = MODE_EDIT;
+					return true; // So that after we clear the screen, the stuff below doesn't get drawn again before switching modes(I'm trying to avoid using Clear() on all layer every fram in the edit screen)
+				}		
 				else
 					nMode = MODE_ERROR;
 			}
@@ -187,20 +215,15 @@ public:
 			{
 				p = olc::YELLOW;
 				pp = olc::YELLOW;
+
+				// Mouse click on new level box
+				if (GetMouse(0).bReleased)
+					nMode = MODE_NEW;
 			}
 			else
 			{
 				p = olc::Pixel(olc::DARK_GREY);
 				pp = olc::Pixel(olc::WHITE);
-			}
-
-			// Mouse click on new level box
-			if (GetMouse(0).bReleased && GetMouseX() <= ScreenWidth() - 100 && GetMouseX() >= ScreenWidth() - 200
-				&&
-				GetMouseY() <= 170 && GetMouseY() >= 100)
-			{
-				//nSelection = vLevelNames.size();
-				nMode = MODE_NEW;
 			}
 		}
 
@@ -226,14 +249,12 @@ public:
 		{
 			DrawString(olc::vi2d(nLevelSelectBoxPosX + 6, (i * 25 + 8) + nLevelSelectBoxPosY), vLevelNames[i + nSelectionOffset]);
 		}
-
-
+		
 		return true;
 	}
 
 	bool UpdateEditScreen(float fElapsedTime)
-	{
-		
+	{	
 		if (IsFocused())
 		{
 			if (GetKey(olc::S).bPressed)
@@ -291,11 +312,15 @@ public:
 					nTilePotentialSelect = -1; // -1 means do not draw the selection box - prevents the mouse-over selection box from lingering if your mouse is no longer over it
 				}
 			}
-		}
-		Clear(olc::VERY_DARK_BLUE);
+		}		
 
-		DrawString(olc::vi2d(50, 5), std::to_string(nSelection + 1) + ": " + vLevelNames[nSelection]);
+		// ========================================================================================== LAYER 2 ==========================================================================================
+		SetDrawTarget(2);
+		
+		// Edit Window Background Color fill
+		FillRectDecal(vGameScreenPos, olc::vi2d((nGameScreenWidth + 1), (nGameScreenHeight + 1)), olc::CYAN); 
 
+		// ======================== Draw Tiles in Edit Window ===============================
 		//fCameraPosX = GetMouseX();
 		//fCameraPosY = GetMouseY();
 
@@ -304,40 +329,6 @@ public:
 		int nTileHeight = 22 * fScalingFactor;
 		int nVisibleTilesX = nGameScreenWidth / nTileWidth;
 		int nVisibleTilesY = nGameScreenHeight / nTileHeight;
-
-		// Level Window
-		FillRect(vGameScreenPos, olc::vi2d((nGameScreenWidth + 1), (nGameScreenHeight + 1)), olc::CYAN);
-		DrawRect(vGameScreenPos - olc::vi2d(1, 1), olc::vi2d((nGameScreenWidth) + 2, (nGameScreenHeight) + 2), olc::DARK_GREY);
-		DrawRect(vGameScreenPos - olc::vi2d(2, 2), olc::vi2d((nGameScreenWidth) + 4, (nGameScreenHeight) + 4), olc::VERY_DARK_GREY);
-
-		// ========================= Tile selection Window ====================================
-		FillRect(olc::vi2d(nTileBoxPosX, nTileBoxPosY), olc::vi2d(nTileBoxWidth, nTileBoxHeight), olc::GREY);
-		DrawRect(olc::vi2d(nTileBoxPosX, nTileBoxPosY), olc::vi2d(nTileBoxWidth, nTileBoxHeight), olc::DARK_GREY);
-		DrawRect(olc::vi2d(nTileBoxPosX + 1, nTileBoxPosY + 1), olc::vi2d(nTileBoxWidth - 2, nTileBoxHeight - 2), olc::DARK_GREY);
-
-		nTileSelectionOffset = (nTileSelection + 1) - nVisibleTileNames; // Determine which level names to show
-		if (nTileSelectionOffset < 0) nTileSelectionOffset = 0;
-
-		if (nTilePotentialSelect != -1)
-			FillRect(olc::vi2d(nTileBoxPosX + 3, ((nTilePotentialSelect - nTileSelectionOffset) * 30 + 13 - 10) + nTileBoxPosY), olc::vi2d(nTileBoxWidth - 5, 28), olc::DARK_YELLOW); // Mouse over Selction Box
-		FillRect(olc::vi2d(nTileBoxPosX + 3, ((nTileSelection - nTileSelectionOffset) * 30 + 13 - 10) + nTileBoxPosY), olc::vi2d(nTileBoxWidth - 5, 28), olc::DARK_RED); // Selction Box
-		for (int i = 0; i < nVisibleTileNames && i < vecTileNames.size(); i++)
-		{
-			// Sprite before Name
-			//SetPixelMode(olc::Pixel::MASK);
-			//DrawSprite(olc::vi2d(nTileBoxPosX + 6, (i * 30 + 13/2) + nTileBoxPosY), Assets::get().GetSprite(vecTileNames[i + nTileSelectionOffset]));
-			//(olc::Pixel::NORMAL);
-			//DrawString(olc::vi2d(nTileBoxPosX + nTileBoxWidth - (vecTileNames[i + nTileSelectionOffset].length() * 8) - 8, (i * 30 + 13) + nTileBoxPosY), vecTileNames[i + nTileSelectionOffset]);
-
-			// Name before Sprite
-			SetPixelMode(olc::Pixel::MASK);
-			DrawSprite(olc::vi2d(nTileBoxPosX + 6 + (vecTileNames[i + nTileSelectionOffset].length() * 8) + 8, (i * 30 + 13 / 2) + nTileBoxPosY), Assets::get().GetSprite(vecTileNames[i + nTileSelectionOffset]));
-			SetPixelMode(olc::Pixel::NORMAL);
-			DrawString(olc::vi2d(nTileBoxPosX + 6, (i * 30 + 13) + nTileBoxPosY), vecTileNames[i + nTileSelectionOffset]);
-		}
-		// =======================================================================================
-
-		
 
 		//Calculate Top-Leftmost visible tile
 		float fOffsetX = fCameraPosX - (float)nVisibleTilesX / 2.0f;
@@ -372,34 +363,25 @@ public:
 		if (fOffsetY < 0) fOffsetY = 0;
 
 		// Clamp actual camera to avoid camera not responding instantly
-		/*if (fCameraPosX < nVisibleTilesX / 2 * nTileWidth) fCameraPosX = nVisibleTilesX * nTileWidth;
-		if (fCameraPosY < nVisibleTilesY / 2 * nTileHeight) fCameraPosY = nVisibleTilesY * nTileHeight;
-		if (fCameraPosX > nWidth - nVisibleTilesX / 2) fCameraPosX = nWidth - nVisibleTilesX / 2;
-		if (fCameraPosY > nHeight - nVisibleTilesY / 2) fCameraPosY = nHeight - nVisibleTilesY / 2;*/
+		//if (fCameraPosX < nVisibleTilesX / 2 * nTileWidth) fCameraPosX = nVisibleTilesX * nTileWidth;
+		//if (fCameraPosY < nVisibleTilesY / 2 * nTileHeight) fCameraPosY = nVisibleTilesY * nTileHeight;
+		//if (fCameraPosX > nWidth - nVisibleTilesX / 2) fCameraPosX = nWidth - nVisibleTilesX / 2;
+		//if (fCameraPosY > nHeight - nVisibleTilesY / 2) fCameraPosY = nHeight - nVisibleTilesY / 2;
 
 
 		// Get offsets for smooth movement
 		float fTileOffsetX = (fOffsetX - (int)fOffsetX) * nTileWidth; // Note: this is already scaled by the fScalingFactor (in nTileWidth / nTileHeight)
 		float fTileOffsetY = (fOffsetY - (int)fOffsetY) * nTileHeight;
 
-		//Draw visible tile map (overdraw to prevent weird artifacts at screen edges)
-		for (int x = 0; x < nVisibleTilesX + 1; x++)
+		//Draw visible tile map (overdraw 2 tiles to account for all situations with zooming/fScalingFactor)
+		for (int x = 0; x < nVisibleTilesX + 2; x++)
 		{
-			for (int y = 0; y < nVisibleTilesY + 1 && y < nHeight; y++)
+			for (int y = 0; y < nVisibleTilesY + 2 && y < nHeight; y++)
 			{
 				if (x + fOffsetX < nWidth && y + fOffsetY < nHeight) // Because we're overdrawing, we want to prevent accessing a tile outside of range
 				{
-					//olc::Sprite sp(GetTile(x + fOffsetX, y + fOffsetY)->sprite->width * fScalingFactor, GetTile(x + fOffsetX, y + fOffsetY)->sprite->height* fScalingFactor);
-					//FillRect(x * nTileWidth - fTileOffsetX + vGameScreenPos.x, y * nTileHeight - fTileOffsetY + vGameScreenPos.y, nTileWidth, nTileHeight, olc::BLUE);
-					//DrawRect(x* nTileWidth - fTileOffsetX + vGameScreenPos.x, y* nTileHeight - fTileOffsetY + vGameScreenPos.y, nTileWidth - 1, nTileHeight - 1, olc::Pixel(rand() % 256, rand() % 256, rand() % 256));
-					//GetTile(x + fOffsetX, y + fOffsetY)->DrawSelf(this, x * nTileWidth - fTileOffsetX + vGameScreenPos.x, y * nTileHeight - fTileOffsetY + vGameScreenPos.y);
-					//olc::GFX2D::Transform2D t;
-					//t.Scale(fScalingFactor, fScalingFactor);
-					//t.Translate(x* nTileWidth - fTileOffsetX + vGameScreenPos.x, y* nTileHeight - fTileOffsetY + vGameScreenPos.y);
-					//SetDrawTarget(&sp);
-					//olc::GFX2D::DrawSprite(GetTile(x + fOffsetX, y + fOffsetY)->sprite, t);
-					//SetDrawTarget(nullptr);
-
+					/*
+					//================================== PARTIAL SPRITE TO PREVENT LEAKING OVER SCREEN BOUNDARY - WORKS OK ==========================================================
 					// This whole mess is because I wanted a more elegant way than "overdrawing" as explained in Javid's platform game vid. Also the whole reason we're using decals - to scale by a float value w/o the performance penalties of the GFX2D library
 					if (x == 0 && y != 0)
 						DrawPartialDecal(olc::vi2d(x * nTileWidth + vGameScreenPos.x, y * nTileHeight - fTileOffsetY + vGameScreenPos.y), GetTile(x + fOffsetX, y + fOffsetY)->decal, olc::vi2d(fTileOffsetX / fScalingFactor, 0), olc::vi2d(GetTile(x + fOffsetX, y + fOffsetY)->decal->sprite->width, GetTile(x + fOffsetX, y + fOffsetY)->decal->sprite->height) - olc::vi2d(fTileOffsetX / fScalingFactor, 0), olc::vf2d(fScalingFactor, fScalingFactor));
@@ -413,19 +395,68 @@ public:
 
 					if (x == nVisibleTilesX || x == nWidth)
 						DrawPartialDecal(olc::vi2d(x * nTileWidth + vGameScreenPos.x, y * nTileHeight - fTileOffsetY + vGameScreenPos.y), GetTile(x + fOffsetX, y + fOffsetY)->decal, olc::vi2d(0, 0), olc::vi2d(GetTile(x + fOffsetX, y + fOffsetY)->decal->sprite->width, GetTile(x + fOffsetX, y + fOffsetY)->decal->sprite->height) - olc::vi2d(fTileOffsetX / fScalingFactor, 0), olc::vf2d(fScalingFactor, fScalingFactor));
+					//==============================================================================================================================================================
+					*/
 
-
-					//GetTile(x, y)->DrawSelf(this, x * nTileWidth - fTileOffsetX + vGameScreenPos.x, y * nTileHeight - fTileOffsetY + vGameScreenPos.y);
+					// =============================== NORMAL OVERDRAW LIKE IN VIDEO - Much better======================================
+					DrawDecal(olc::vf2d(x * nTileWidth - fTileOffsetX + vGameScreenPos.x, y * nTileHeight - fTileOffsetY + vGameScreenPos.y), GetTile(x + fOffsetX, y + fOffsetY)->decal, olc::vf2d(fScalingFactor, fScalingFactor));
+					//====================================================================================================
 				}
 			}
 		}
+		//  ======================== END: Draw Tiles in Edit Window ===============================
+
+		// ========================================================================================== LAYER 1 ==========================================================================================
+		SetDrawTarget(1);
+		ClearEditScreen(olc::VERY_DARK_BLUE);
+
+		// ========================================================================================== LAYER 0 ==========================================================================================
+		SetDrawTarget(nullptr);
+
+		// Edit Window Border
+		DrawRect(vGameScreenPos - olc::vi2d(1, 1), olc::vi2d((nGameScreenWidth) + 1, (nGameScreenHeight) + 1), olc::VERY_DARK_GREY);
+		DrawRect(vGameScreenPos - olc::vi2d(2, 2), olc::vi2d((nGameScreenWidth) + 3, (nGameScreenHeight) + 3), olc::DARK_GREY);
+
+		//Level Name
+		DrawStringDecal(olc::vi2d(50, 5), std::to_string(nSelection + 1) + ": " + vLevelNames[nSelection]);
+		
+		// ========================= Tile selection Window ====================================
+		FillRectDecal(olc::vi2d(nTileBoxPosX + 2, nTileBoxPosY + 2), olc::vi2d(nTileBoxWidth - 3, nTileBoxHeight - 3), olc::GREY);
+		DrawRect(olc::vi2d(nTileBoxPosX + 1, nTileBoxPosY + 1), olc::vi2d(nTileBoxWidth - 2, nTileBoxHeight - 2), olc::VERY_DARK_GREY);
+		DrawRect(olc::vi2d(nTileBoxPosX, nTileBoxPosY), olc::vi2d(nTileBoxWidth, nTileBoxHeight), olc::DARK_GREY);
+
+		nTileSelectionOffset = (nTileSelection + 1) - nVisibleTileNames; // Determine which level names to show
+		if (nTileSelectionOffset < 0) nTileSelectionOffset = 0;
+
+		if (nTilePotentialSelect != -1)
+			FillRectDecal(olc::vi2d(nTileBoxPosX + 3, ((nTilePotentialSelect - nTileSelectionOffset) * 30 + 13 - 10) + nTileBoxPosY), olc::vi2d(nTileBoxWidth - 5, 28), olc::DARK_YELLOW); // Mouse over Selction Box
+		FillRectDecal(olc::vi2d(nTileBoxPosX + 3, ((nTileSelection - nTileSelectionOffset) * 30 + 13 - 10) + nTileBoxPosY), olc::vi2d(nTileBoxWidth - 5, 28), olc::DARK_RED); // Selction Box
+		for (int i = 0; i < nVisibleTileNames && i < vecTileNames.size(); i++)
+		{
+			if (vecTileNames[i + nTileSelectionOffset].length() > 20) //If string is long, show Sprite before name so that it gets shown
+			{
+
+			}
+			else // Show the Name first
+			{
+
+			}
+			// Sprite before Name
+			//SetPixelMode(olc::Pixel::MASK);
+			//DrawSprite(olc::vi2d(nTileBoxPosX + 6, (i * 30 + 13/2) + nTileBoxPosY), Assets::get().GetSprite(vecTileNames[i + nTileSelectionOffset]));
+			//(olc::Pixel::NORMAL);
+			//DrawString(olc::vi2d(nTileBoxPosX + nTileBoxWidth - (vecTileNames[i + nTileSelectionOffset].length() * 8) - 8, (i * 30 + 13) + nTileBoxPosY), vecTileNames[i + nTileSelectionOffset]);
+
+			// Name before Sprite
+			SetPixelMode(olc::Pixel::MASK);
+			DrawDecal(olc::vi2d(nTileBoxPosX + 6 + (vecTileNames[i + nTileSelectionOffset].length() * 8) + 8, (i * 30 + 13 / 2) + nTileBoxPosY), Assets::get().GetDecal(vecTileNames[i + nTileSelectionOffset]));
+			SetPixelMode(olc::Pixel::NORMAL);
+			DrawStringDecal(olc::vi2d(nTileBoxPosX + 6, (i * 30 + 13) + nTileBoxPosY), vecTileNames[i + nTileSelectionOffset]);
+		}
+		// ========================= END: Tile selection Window ====================================
 
 		//TEST
-		/*for (int i = 0; i < nWidth * nHeight; i++)
-		{
-			vecTiles[i]->DrawSelf(this, i * 30, 30);
-		}*/
-		
+
 
 		return true;
 	}
@@ -449,6 +480,8 @@ public:
 		std::ifstream inFile("Tiles.key", std::ios::in | std::ios::binary);
 		if (inFile.is_open())
 		{
+			// Put blank here if want empty tile to be 0
+			vecTileNames.push_back("Blank");
 			std::string s;
 			while (!inFile.eof())
 			{
@@ -494,7 +527,7 @@ public:
 			inFile >> nWidth >> nHeight;
 			if (nWidth == 0 || nHeight == 0) // Default for these values is 0, so if not changed there is no level
 			{
-				std::cerr << "Ensure Level exists, and that Level Width and Level Height are respectively defined in the first 2 lines after the level name." << std::endl;
+				std::cerr << "Ensure Level Width and Level Height are respectively defined in the first 2 lines after the level name." << std::endl;
 				nErrorCode = 2;
 				return false;
 			}
@@ -518,6 +551,8 @@ public:
 					//Interogate vector<string> vecTileNames at vecTileNames[n] to get the string name for the tile
 					if (nTileType >= 0 && nTileType < vecTileNames.size())
 						vecTiles[y * nWidth + x] = new cTile(vecTileNames[nTileType], nTileSolid, nTileBreakable);
+					//else if (nTileType == -1)
+						//vecTiles[y * nWidth + x] = new cTile("Blank", nTileSolid, nTileBreakable); // Note that empty/blank tiles can still be solid and breakable!
 					else
 					{
 						std::cerr << "Tile provided at (" << x << ", " << y << ") is not within the range of tiles provided in Tiles.key" << std::endl;
@@ -593,12 +628,69 @@ public:
 			DrawString(olc::vi2d(5, 170), "Could not open file to read level data.", olc::DARK_GREY, 2);
 			break;
 		case 2:
-			DrawString(olc::vi2d(5, 170), "File opened to read level data,\nbut something went wrong reading it.", olc::DARK_GREY, 2);
+			DrawString(olc::vi2d(5, 170), "File opened to read level data,\nbut something went wrong reading it.\n\nLevel Width and Height might be missing\nfrom the 2nd and 3rd lines of the file.", olc::DARK_GREY, 2);
 			break;
 		case 3:
 			DrawString(olc::vi2d(5, 170), "Tried indexing into an illegal spot\nin vecTiles.\n\nEnsure things that modify\nthe index (like fOffset) are correct.", olc::DARK_GREY, 2);
 			break;
 		}
+		return true;
+	}
+
+	void ClearEditScreen(olc::Pixel p) // Easier way to keep tiles from showing outside of edit window
+	{
+		FillRectDecal({ 0.0f, 0.0f }, { (float)ScreenWidth(), (float)vGameScreenPos.y }, p);
+		FillRectDecal({ 0, (float)(vGameScreenPos.y + nGameScreenHeight) }, { (float)ScreenWidth(), (float)ScreenHeight() - (float)(vGameScreenPos.y + nGameScreenHeight) }, p);
+		FillRectDecal({ 0, (float)vGameScreenPos.y }, { (float)vGameScreenPos.x, (float)nGameScreenHeight + 1.0f }, p);
+		FillRectDecal({ (float)(vGameScreenPos.x + nGameScreenWidth), (float)vGameScreenPos.y }, { (float)(ScreenWidth() - (nGameScreenWidth + vGameScreenPos.x)), (float)nGameScreenHeight + 1.0f }, p);
+	}
+
+	void ClearAllLayers(olc::Pixel p)
+	{
+		olc::Sprite* oldTarget = GetDrawTarget();
+		for (int i = 0; i < GetLayers().size(); i++)
+		{
+			SetDrawTarget(i);
+			Clear(p);
+		}
+		SetDrawTarget(oldTarget);
+	}
+
+	bool UpdateTestScreen(float fElapsedTime)
+	{
+		if (GetKey(olc::Q).bReleased)
+		{
+			EnableLayer(1, true);
+		}
+
+		olc::Sprite* sss = Assets::get().GetSprite("Blank");
+		olc::Decal* ddd = Assets::get().GetDecal("Blank");
+
+		DrawSprite({ 0, 0 }, sss);
+		DrawDecal({ 30, 30 }, ddd);
+		DrawRect({ 30, 30 }, { Assets::get().GetSprite("Blank")->width, Assets::get().GetSprite("Blank")->height }, olc::CYAN);
+		//SetDrawTarget(nullptr);
+		//Clear(olc::GREEN);
+
+		//DrawSprite({ 30, 30 }, Assets::get().GetSprite("Blank"));
+		//DrawRect({ 30, 30 }, { Assets::get().GetSprite("Blank")->width, Assets::get().GetSprite("Blank")->width }, olc::BLACK);
+		//DrawString({ 30, 30 }, std::to_string(Assets::get().GetSprite("Blank")->width), olc::BLACK);
+		//SetDrawTarget(nullptr);
+		
+		//FillRect({ 20, 20 }, {50, 50}, olc::DARK_BLUE);
+		//FillRectDecal({ 20, 20 }, { 50, 50 }, olc::DARK_BLUE);
+		//Clear(olc::BLANK);
+
+		//SetDrawTarget(1);
+		//Clear(olc::CYAN);
+		//EnableLayer(1, true);
+		//FillRectDecal({ 40, 20 }, { 50, 50 }, olc::GREEN);
+		//FillRect({ 40, 20 }, { 50, 50 }, olc::GREEN);
+
+		//GradientFillRectDecal({ 20, 60 }, { 500, 800 }, olc::Pixel(rand() % 255, rand() % 255, rand() % 255), olc::Pixel(rand() % 255, rand() % 255, rand() % 255), olc::Pixel(rand() % 255, rand() % 255, rand() % 255), olc::Pixel(rand() % 255, rand() % 255, rand() % 255));
+
+		//DrawStringDecal({ 50, 550 }, std::to_string(GetMouseWheel()));
+
 		return true;
 	}
 

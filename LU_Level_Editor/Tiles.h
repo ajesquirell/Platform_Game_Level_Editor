@@ -25,10 +25,11 @@ Tiles.h
 class cTile
 {
 public:
-	cTile(std::string tileName, bool solid, bool bBreak);
+	cTile(std::string tileName, int tileID, bool solid, bool bBreak);
 
 public:
-	std::string sName;
+	std::string sName; // For getting correct sprite
+	int iD; // As stored in the level file
 	bool solid = true;
 	bool bBreakable;
 

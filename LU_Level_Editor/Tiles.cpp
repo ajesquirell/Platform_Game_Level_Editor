@@ -7,9 +7,10 @@ using namespace std;
 //==================================================================================================================================================================================================
 //																					BASE TILE
 //==================================================================================================================================================================================================
-cTile::cTile(string tileName, bool solid, bool bBreak)
+cTile::cTile(string tileName, int tileID, bool solid, bool bBreak)
 {
 	sName = tileName;
+	iD = tileID;
 	this->solid = solid;
 	bBreakable = bBreak;
 	broken = false;
@@ -25,18 +26,8 @@ cTile::cTile(string tileName, bool solid, bool bBreak)
 
 void cTile::PopulateSprites()
 {
-	//if (sName != "Blank")
-	//{
-		//animTile.mapStates["default"].push_back(Assets::get().GetSprite(sName));
 		sprite = Assets::get().GetSprite(sName);
-
 		decal = Assets::get().GetDecal(sName); // Get decal too
-	//}
-	//else
-	//{
-		//sprite = nullptr;
-		//decal = nullptr;
-	//}
 }
 
 void cTile::DrawSelf(olc::PixelGameEngine* pge, float screenPosX, float screenPosY) //screen space coordinates

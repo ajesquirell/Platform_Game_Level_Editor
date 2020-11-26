@@ -45,7 +45,7 @@ public:
 
 	void LoadSprites();
 	void LoadTileSprites(olc::PixelGameEngine*, std::vector<std::string>);
-	void CreateNotFoundSprite(olc::PixelGameEngine* pge);
+	olc::Sprite* CreateNotFoundSprite(olc::PixelGameEngine* pge);
 
 private:
 	Assets();
